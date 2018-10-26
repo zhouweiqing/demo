@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  	<meta charset="UTF-8">
+  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <style>
+      #map {
+        width: 100%;
+        height: 600px;
+        background-color: grey;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+		'use strict';
+		var cityNameList = [];		// city name list
+		var citys = [];				// city with geographical location
+		var map;
+		var markerList = [];
+		var flightPathList = [];
+
+		// click OK button
+	    function onAddbtnClick() {
+	    	clearMap();
+
+			var inputList = document.getElementById("cityInput").value;
+			cityNameList = inputList.split(/[ ,]+/);
+			
+			drawMap();
+	    }
+
+		// clear marker and line
+	    function clearMap() {
+	    	while(markerList.length) {
+	    		markerList.pop().setMap(null);
+	    	}
+	    	while(flightPathList.length) {
+	    		flightPathList.pop().setMap(null);
+    		}
+	    	citys = [];
+	    }
+	    
+	    function drawMarker(map, city, label) {
+	    	var marker = new google.maps.Marker({
+								map: map,
+								label: label,
+								draggable: false,
+								animation: google.maps.Animation.DROP,
+								position: city
+								});
+			marker.setMap(map);
+			markerList.push(marker);
+	    }
+
+	    function drawLine(map, city1, city2) {
+			var flightPlanCoordinates = [city1, city2];
+			var flightPath = new google.maps.Polyline({
+									path: flightPlanCoordinates,
+									strokeColor: "#FF0000",
+									strokeOpacity: 0.5,
+									strokeWeight: 2
+									});
+			flightPath.setMap(map);
+			flightPathList.push(flightPath);
+		}
+
+		function drawMap() {
+			$.ajaxSetup({
+				async: false
+			});
+
+			for (var cityName of cityNameList) {
+				var url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + cityName + '&key=AIzaSyBc-TE2x4jgYmx90dpEFXqzoECOu2WTuFc';
+				(function(cityName) {
+					try {
+						$.getJSON(url, function(data) {
+	//						console.log(data.results[0].geometry.location);
+							try {
+								citys.push([cityName, data.results[0].geometry.location]);
+							}
+							catch (e) { 
+								console.log(e)
+							}
+						}); 
+					}
+					catch(e) {
+						
+					}
+				}) (cityName);
+			}
+
+			var markerBounds = new google.maps.LatLngBounds();
+			for (var city of citys) {
+				markerBounds.extend(city[1]);
+			}
+
+			map.fitBounds(markerBounds);
+			
+			var timeout = 1200;
+			var timeout2 = 1400;
+			var cityPrev = citys[0];	
+			for (var city of citys) {
+				(function(city){setTimeout(function(){drawMarker(map, city[1], city[0]);}, timeout);})(city);
+				//(function(city) {setTimeout(function(){drawLine(map, cityPrev[1], city[1]);}, timeout2);})(city);
+				
+				drawLine(map, cityPrev[1], city[1]);
+				cityPrev = city;
+				
+				timeout += 500;
+				timeout2 += 500;
+			}
+		}
+		
+		function initMap() {
+			map = new google.maps.Map(document.getElementById('map'), {
+				//center: {lat: 30, lng: 0},
+				scrollwheel: true,
+				//zoom: 3
+			});
+			
+			drawMap();
+		}
+
+    </script>
+    
+    <script sync defer
+		src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBc-TE2x4jgYmx90dpEFXqzoECOu2WTuFc&callback=initMap">
+    </script>
+    <div>
+    <h3>2016 Footprint</h3>
+    Input the city names below, seperate with comma or space. <br>
+    Press OK to generate your own footprint on map. <br>
+    <input id='cityInput' type="text" class='form-control' value='' placeholder='e.g.: Berlin, Paris, 北京' 
+    	onkeydown="if (event.keyCode == 13) document.getElementById('addbtn').click()">
+	<button id='addbtn' type='button' onclick="onAddbtnClick()" class="btn btn-success">OK</button>
+	</div>
+	<div><br></div>
+    <div id="map"></div>
+  </body>
+</html>
